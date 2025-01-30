@@ -1,0 +1,5 @@
+Django
+mysql-connector
+# Pillow==7.2.0
+django-renderpdf
+requests
