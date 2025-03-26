@@ -1,0 +1,127 @@
+{% extends 'root.html' %} 
+{% load static %} 
+{% block content %}
+<div class="content">
+	<!-- Remove content-header section to reduce top spacing -->
+	<section class="content" style="padding-top: 15px">
+		<!-- Added padding-top to compensate for header removal -->
+		<div class="row">
+			<div class="col-xs-12">
+				<div class="box box-primary">
+					<div class="box-header with-border">
+						<h3 class="box-title">{{ page_title }}</h3>
+						<!-- Use page_title instead of hardcoded text -->
+					</div>
+					<div class="box-body">
+						<div class="row">
+							<!-- Adjusted column widths for better space utilization -->
+							<div class="col-md-7">
+								<div class="info-box" style="margin-bottom: 10px">
+									<!-- Reduced bottom margin -->
+									<span
+										class="info-box-icon bg-{% if voting_control.is_active %}green{% else %}red{% endif %}"
+									>
+										<i
+											class="fa fa-{% if voting_control.is_active %}check-circle{% else %}ban{% endif %}"
+										></i>
+									</span>
+									<div class="info-box-content">
+										<span class="info-box-text">Current Status</span>
+										<span class="info-box-number">
+											{% if voting_control.is_active %}
+											<span class="text-success">Voting is ACTIVE</span>
+											{% else %}
+											<span class="text-danger">Voting is INACTIVE</span>
+											{% endif %}
+										</span>
+									</div>
+								</div>
+
+								<div
+									class="small-box bg-{% if voting_control.is_active %}green{% else %}gray{% endif %}"
+									style="margin-bottom: 10px"
+								>
+									<!-- Reduced bottom margin -->
+									<div class="inner">
+										{% if voting_control.started_at %}
+										<h4><strong>Started at:</strong></h4>
+										<p>{{ voting_control.started_at|date:"F d, Y - H:i" }}</p>
+										{% endif %} {% if voting_control.ended_at %}
+										<h4><strong>Last ended at:</strong></h4>
+										<p>{{ voting_control.ended_at|date:"F d, Y - H:i" }}</p>
+										{% endif %}
+									</div>
+									<div class="icon">
+										<i class="fa fa-clock-o"></i>
+									</div>
+								</div>
+
+								<!-- Added info text here instead of at the bottom -->
+								<div class="alert alert-info">
+									<h4><i class="icon fa fa-info"></i> Note:</h4>
+									{% if voting_control.is_active %} When disabled, voters will
+									not be able to access the voting interface. {% else %} When
+									enabled, voters will be able to cast their votes. {% endif %}
+									<hr />
+									<small
+										><i class="fa fa-info-circle"></i> Changes take effect
+										immediately across the entire voting system.</small
+									>
+								</div>
+							</div>
+
+							<div class="col-md-5">
+								<!-- Adjusted column width -->
+								<div class="text-center" style="margin-top: 20px">
+									<!-- Reduced top margin -->
+									<form method="post">
+										{% csrf_token %}
+										<input type="hidden" name="action" value="toggle" />
+										<button
+											type="submit"
+											class="btn btn-{% if voting_control.is_active %}danger{% else %}success{% endif %} btn-lg btn-block"
+											style="padding: 15px; font-size: 18px"
+											> {% if voting_control.is_active %}
+											<i class="fa fa-toggle-off"></i>
+											<span style="margin-left: 10px">DISABLE VOTING</span>
+											{% else %}
+											<i class="fa fa-toggle-on"></i>
+											<span style="margin-left: 10px">ENABLE VOTING</span>
+											{% endif %}
+										</button>
+									</form>
+								</div>
+							</div>
+						</div>
+					</div>
+					<!-- Removed box-footer to save space -->
+				</div>
+
+				{% if messages %}
+				<div class="alert-container">
+					{% for message in messages %}
+					<div class="alert alert-{{ message.tags }} alert-dismissible">
+						<button
+							type="button"
+							class="close"
+							data-dismiss="alert"
+							aria-hidden="true"
+						>
+							×
+						</button>
+						<h4>
+							<i
+								class="icon fa fa-{% if message.tags == 'success' %}check{% else %}warning{% endif %}"
+							></i>
+							{{ message.tags|title }}
+						</h4>
+						{{ message }}
+					</div>
+					{% endfor %}
+				</div>
+				{% endif %}
+			</div>
+		</div>
+	</section>
+</div>
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends 'root.html' %} {% block content %}
+<div class="content">
+	<section class="content-header">
+		<h1>{{ page_title }}</h1>
+		<ol class="breadcrumb">
+			<li>
+				<a href="{% url 'adminDashboard' %}"
+					><i class="fa fa-dashboard"></i> Home</a
+				>
+			</li>
+			<li class="active">{{ page_title }}</li>
+		</ol>
+	</section>
+
+	<section class="content">
+		{% if messages %}
+		<div class="row">
+			<div class="col-sm-12">
+				{% for message in messages %}
+				<div class="alert alert-{{ message.tags }} alert-dismissible">
+					<button
+						type="button"
+						class="close"
+						data-dismiss="alert"
+						aria-hidden="true"
+					>
+						×
+					</button>
+					<h4>
+						<i
+							class="icon fa fa-{% if message.tags == 'success' %}check{% else %}warning{% endif %}"
+						></i>
+						{{ message.tags|title }}!
+					</h4>
+					{{ message }}
+				</div>
+				{% endfor %}
+			</div>
+		</div>
+		{% endif %}
+
+		<div class="row">
+			<div class="col-xs-12">
+				<div class="box">
+					<div class="box-header with-border">
+						<a
+							href="#addnew"
+							data-toggle="modal"
+							class="btn btn-primary btn-sm btn-flat"
+							><i class="fa fa-plus"></i> New</a
+						>
+					</div>
+					<div class="box-body">
+						<table id="example1" class="table table-bordered">
+							<thead>
+								<th>Student Number</th>
+								<th>Action</th>
+							</thead>
+							<tbody>
+								{% for student in students %}
+								<tr>
+									<td>{{ student.student_number }}</td>
+									<td>
+										<button
+											class="btn btn-danger btn-sm delete btn-flat"
+											data-id="{{ student.id }}"
+										>
+											<i class="fa fa-trash"></i> Delete
+										</button>
+									</td>
+								</tr>
+								{% empty %}
+								<tr>
+									<td colspan="2" class="text-center">
+										No approved student numbers added yet.
+									</td>
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+</div>
+{% endblock %} {% block modal %}
+<!-- Add -->
+<div class="modal fade" id="addnew">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button
+					type="button"
+					class="close"
+					data-dismiss="modal"
+					aria-label="Close"
+				>
+					<span aria-hidden="true">&times;</span>
+				</button>
+				<h4 class="modal-title"><b>Add New Approved Student</b></h4>
+			</div>
+			<form
+				class="form-horizontal"
+				method="POST"
+				action="{% url 'approvedStudents' %}"
+			>
+				<div class="modal-body">
+					{% csrf_token %}
+					<div class="form-group">
+						<label for="student_number" class="col-sm-3 control-label"
+							>Student Number</label
+						>
+						<div class="col-sm-9">
+							{{ form.student_number }} {% if form.student_number.errors %}
+							<span class="text-danger">{{ form.student_number.errors }}</span>
+							{% endif %}
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						type="button"
+						class="btn btn-default btn-flat pull-left"
+						data-dismiss="modal"
+					>
+						<i class="fa fa-close"></i> Close
+					</button>
+					<button type="submit" class="btn btn-primary btn-flat" name="add">
+						<i class="fa fa-save"></i> Save
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<!-- Delete -->
+<div class="modal fade" id="delete">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button
+					type="button"
+					class="close"
+					data-dismiss="modal"
+					aria-label="Close"
+				>
+					<span aria-hidden="true">&times;</span>
+				</button>
+				<h4 class="modal-title"><b>Deleting...</b></h4>
+			</div>
+			<form
+				class="form-horizontal"
+				method="POST"
+				action="{% url 'deleteApprovedStudent' %}"
+			>
+				{% csrf_token %}
+				<div class="modal-body">
+					<input type="hidden" class="id" name="id" />
+					<div class="text-center">
+						<p>DELETE STUDENT NUMBER</p>
+						<h2 class="bold student_number"></h2>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button
+						type="button"
+						class="btn btn-default btn-flat pull-left"
+						data-dismiss="modal"
+					>
+						<i class="fa fa-close"></i> Close
+					</button>
+					<button type="submit" class="btn btn-danger btn-flat">
+						<i class="fa fa-trash"></i> Delete
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+{% endblock %} {% block custom_js %}
+<script>
+	$(function () {
+		$(document).on("click", ".delete", function (e) {
+			e.preventDefault();
+			$("#delete").modal("show");
+			var id = $(this).data("id");
+			getRow(id);
+		});
+	});
+
+	function getRow(id) {
+		$.ajax({
+			type: "GET",
+			url: '{% url "viewApprovedStudent" %}',
+			data: { id: id },
+			dataType: "json",
+			success: function (response) {
+				if (response.code == 200) {
+					$(".id").val(response.id);
+					$(".student_number").html(response.student_number);
+				}
+			},
+		});
+	}
+</script>
+{% endblock %}

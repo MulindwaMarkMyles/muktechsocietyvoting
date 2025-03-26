@@ -4,7 +4,7 @@ from .models import ApprovedStudent
 
 
 # Path to your uploaded file
-excel_file = "classReps.xlsx"
+excel_file = "chussReps.xlsx"
 
 def add_student_numbers():
 
@@ -12,7 +12,7 @@ def add_student_numbers():
     df = pd.read_excel(excel_file)
 
     # Assuming student numbers are in a column named 'Student Number'
-    column_name = "Student Number"  # Change this if your column name is different
+    column_name = "STUDENT NUMBER"  # Change this if your column name is different
 
     if column_name in df.columns:
         for student_number in df[column_name].dropna().astype(str):  # Ensure values are strings

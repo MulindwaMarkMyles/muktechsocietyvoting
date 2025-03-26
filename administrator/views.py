@@ -1,5 +1,6 @@
 from django.shortcuts import render, reverse, redirect
-from voting.models import Voter, Position, Candidate, Votes
+from administrator.forms import ApprovedStudentForm
+from voting.models import Voter, Position, Candidate, Votes, VotingControl
 from django.contrib.auth.models import User
 from accounts.models import Profile
 from accounts.forms import CustomUserForm
@@ -8,6 +9,10 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 from django_renderpdf.views import PDFView
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required, user_passes_test
+from accounts.models import ApprovedStudent
+from django import forms
 
 
 def find_n_winners(data, n):
@@ -411,3 +416,98 @@ def resetVote(request):
     Voter.objects.all().update(voted=False, verified=False)
     messages.success(request, "All votes has been reset")
     return redirect(reverse('viewVotes'))
+
+
+def is_admin(user):
+    return user.profile.user_type == '1'
+
+
+@login_required
+@user_passes_test(is_admin)
+def voting_control(request):
+    """View to display and control voting status"""
+    # Get or create the voting control object
+    voting_control = VotingControl.objects.first()
+    if not voting_control:
+        voting_control = VotingControl.objects.create(created_by=request.user)
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'toggle':
+            # Toggle voting status
+            if voting_control.is_active:
+                voting_control.is_active = False
+                voting_control.ended_at = timezone.now()
+                messages.success(request, "Voting has been disabled")
+            else:
+                voting_control.is_active = True
+                voting_control.started_at = timezone.now()
+                messages.success(request, "Voting has been enabled")
+            
+            voting_control.save()
+    
+    context = {
+        'page_title': 'Voting Control',
+        'voting_control': voting_control,
+    }
+    return render(request, 'administrator/voting_control.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def approved_students(request):
+    students = ApprovedStudent.objects.all().order_by('student_number')
+    form = ApprovedStudentForm(request.POST or None)
+    
+    if request.method == 'POST':
+        if 'add' in request.POST:
+            if form.is_valid():
+                form.save()
+                messages.success(request, "Added new approved student number")
+                return redirect('approvedStudents')
+            else:
+                messages.error(request, "Form has errors. Student number might already exist.")
+    
+    context = {
+        'students': students,
+        'form': form,
+        'page_title': 'Approved Students'
+    }
+    return render(request, 'administrator/approved_students.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_approved_student(request):
+    if request.method != 'POST':
+        messages.error(request, "Access Denied")
+        return redirect('approvedStudents')
+    
+    try:
+        student_id = request.POST.get('id')
+        student = ApprovedStudent.objects.get(id=student_id)
+        student.delete()
+        messages.success(request, "Student number removed from approved list")
+    except Exception as e:
+        messages.error(request, f"Error deleting student: {str(e)}")
+    
+    return redirect('approvedStudents')
+
+@login_required
+@user_passes_test(is_admin)
+def view_approved_student(request):
+    student_id = request.GET.get('id')
+    
+    try:
+        student = ApprovedStudent.objects.get(id=student_id)
+        context = {
+            'code': 200,
+            'id': student.id,
+            'student_number': student.student_number
+        }
+    except:
+        context = {
+            'code': 404
+        }
+    
+    return JsonResponse(context)

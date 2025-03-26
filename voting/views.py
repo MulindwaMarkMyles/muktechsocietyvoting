@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, reverse
 from accounts.views import account_login
-from .models import Position, Candidate, Voter, Votes
+from .models import Position, Candidate, Voter, Votes, VotingControl
 from django.http import JsonResponse
 from django.utils.text import slugify
 from django.contrib import messages
@@ -85,18 +85,32 @@ def fetch_ballot(request):
 
 def dashboard(request):
     user = request.user
+    
+    # Clear any redirect tracking that might have been set
+    if 'redirect_count' in request.session:
+        del request.session['redirect_count']
+        
     try:
-        print(user)
-        voter = Voter.objects.get(admin=user)  # Changed filter to get
-        if voter.voted:
-            return render(request, "voting/voter/result.html", {'my_votes': Votes.objects.filter(voter=voter)})
-        elif request.path == reverse('show_ballot'):  # Prevent infinite loop
-            messages.error(request, "Unexpected error. Please try again.")
+        if not get_voting_status():
+            messages.error(request, "Voting is currently disabled by administrators")
             return redirect(reverse('account_login'))
+        
+        print(user)
+        print("trying")
+        if not hasattr(user, 'voter'):
+            messages.error(request, "Voter profile not found. Please contact support.")
+            return redirect(reverse('account_login'))
+            
+        voter = user.voter  # Access the related voter object
+        if voter.voted:
+            print("voted")
+            return render(request, "voting/voter/result.html", {'my_votes': Votes.objects.filter(voter=voter)})
         else:
+            # Set a flag to track redirect
+            request.session['from_dashboard'] = True
             return redirect(reverse('show_ballot'))
-    except Voter.DoesNotExist:
-        messages.error(request, "Voter profile not found. Please contact support.")
+    except Exception as e:
+        messages.error(request, f"An unexpected error occurred: {str(e)}")
         return redirect(reverse('account_login'))
 
 def verify(request):
@@ -106,14 +120,43 @@ def verify(request):
     return render(request, "voting/voter/verify.html", context)
 
 def show_ballot(request):
-    if request.user.voter.voted:
-        messages.error(request, "You have voted already")
-        return redirect(reverse('voterDashboard'))
-    ballot = generate_ballot(display_controls=False)
-    context = {
-        'ballot': ballot
-    }
-    return render(request, "voting/voter/ballot.html", context)
+    # Check for redirect loop
+    redirect_count = request.session.get('redirect_count', 0)
+    if redirect_count > 2:  # If redirected more than twice, break the loop
+        messages.error(request, "Too many redirects detected. Please contact support.")
+        request.session.pop('redirect_count', None)
+        return redirect(reverse('account_login'))
+    
+    # Increment redirect counter
+    request.session['redirect_count'] = redirect_count + 1
+    
+    # Check if voting is enabled
+    if not get_voting_status():
+        messages.error(request, "Voting is currently disabled by administrators")
+        return redirect(reverse('account_login'))
+    
+    # Safely check if user is authenticated and has a voter profile
+    if not request.user.is_authenticated:
+        messages.error(request, "Please log in to access the ballot.")
+        return redirect(reverse('account_login'))
+    
+    try:
+        voter = request.user.voter
+        if voter.voted:
+            messages.error(request, "You have voted already")
+            return redirect(reverse('voterDashboard'))
+        
+        ballot = generate_ballot(display_controls=False)
+        context = {
+            'ballot': ballot
+        }
+        # Clear redirect counter on successful render
+        if 'redirect_count' in request.session:
+            del request.session['redirect_count']
+        return render(request, "voting/voter/ballot.html", context)
+    except Exception as e:
+        messages.error(request, f"Error retrieving ballot: {str(e)}")
+        return redirect(reverse('account_login'))
 
 def preview_vote(request):
     if request.method != 'POST':
@@ -190,6 +233,11 @@ def preview_vote(request):
     return JsonResponse(context, safe=False)
 
 def submit_ballot(request):
+    # Check if voting is enabled
+    if not get_voting_status():
+        messages.error(request, "Voting is currently disabled by administrators")
+        return redirect(reverse('account_login'))
+        
     if request.method != 'POST':
         messages.error(request, "Please, browse the system properly")
         return redirect(reverse('show_ballot'))
@@ -272,3 +320,17 @@ def submit_ballot(request):
         voter.save()
         messages.success(request, "Thanks for voting")
         return redirect(reverse('voterDashboard'))
+
+def get_voting_status():
+    """Helper function to check if voting is enabled"""
+    voting_control = VotingControl.objects.first()
+    if not voting_control:
+        return False
+    return voting_control.is_active
+
+def vote(request):
+    if not get_voting_status():
+        messages.error(request, "Voting is currently disabled")
+        return redirect('home')  # Or wherever appropriate
+    
+    # ...rest of your voting view code...

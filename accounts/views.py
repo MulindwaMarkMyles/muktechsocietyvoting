@@ -2,11 +2,14 @@ from django.shortcuts import render, redirect, reverse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.contrib.auth.models import User
+
+from voting.models import VotingControl
 from .models import ApprovedStudent, Profile
 from .forms import CustomUserForm
 from voting.forms import VoterForm
 
 def account_login(request):
+    voting_control = VotingControl.objects.first()
     if request.method == 'POST':
         stud_no = request.POST.get('stud_no', '').strip()
         password = request.POST.get('password', '')
@@ -20,18 +23,25 @@ def account_login(request):
                 login(request, user)
                 if profile.user_type == '1':
                     return redirect(reverse("adminDashboard"))
-                return redirect(reverse("voterDashboard"))
+                elif profile.user_type == '2':
+                    voting_control = VotingControl.objects.first()
+                    if voting_control.is_active:
+                        return redirect(reverse("voterDashboard"))
+                    else:
+                        messages.error(request, "Voting is currently disabled")
+                        return redirect(reverse("account_login"))
             else:
                 messages.error(request, "Invalid credentials")
                 return redirect(reverse('account_login'))
         except Profile.DoesNotExist:
             messages.error(request, "Student number not found")
             return redirect(reverse('account_login'))
-            
-    elif request.user.is_authenticated:
-        if request.user.profile.user_type == '1':
-            return redirect(reverse('adminDashboard'))
+        
+    elif request.user.is_authenticated and voting_control.is_active and request.user.profile.user_type == '2':
         return redirect(reverse('voterDashboard'))
+    
+    elif request.user.is_authenticated and request.user.profile.user_type == '1':
+        return redirect(reverse('adminDashboard'))
     return render(request, "voting/login.html")
 
 def account_register(request):

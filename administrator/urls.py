@@ -32,4 +32,12 @@ urlpatterns = [
     path('votes/view', views.viewVotes, name='viewVotes'),
     path('votes/reset/', views.resetVote, name='resetVote'),
     path('votes/print/', views.PrintView.as_view(), name='printResult'),
+
+    # * Voting Control
+    path('voting_control/', views.voting_control, name='voting_control'),
+
+    # * Approved Students
+    path('approved-students/', views.approved_students, name='approvedStudents'),
+    path('approved-students/view/', views.view_approved_student, name='viewApprovedStudent'),
+    path('approved-students/delete/', views.delete_approved_student, name='deleteApprovedStudent'),
 ]
