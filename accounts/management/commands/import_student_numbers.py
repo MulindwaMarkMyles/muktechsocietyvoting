@@ -12,6 +12,7 @@ class Command(BaseCommand):
         files_to_process = [
             {'path': 'resources/CHM 2220 REGISTRATION FORM.pdf', 'type': 'pdf'},
             {'path': 'resources/CHEMISTRY CLASS LIST 2024.xlsx', 'type': 'excel'},
+            {'path': 'resources/UPDATED VOTER\'S REGISTER.xlsx', 'type': 'excel'},
             {'path': 'resources/4_5979012565328467215.pdf', 'type': 'pdf'}
         ]
 
@@ -87,7 +88,7 @@ class Command(BaseCommand):
         # Check for 'STUDENT NO' column (case insensitive)
         student_col = None
         for col in df.columns:
-            if 'student no' in str(col).lower():
+            if 'student no' in str(col).lower() or 'student\'s no' in str(col).lower():
                 student_col = col
                 break
                 
